@@ -1,6 +1,8 @@
 const { Router } = require('express');
 const Aluno = require('../models/Aluno');
 const Curso = require('../models/Curso');
+const nodemon = require('nodemon');
+const Professor = require('../models/Professores');
 
 // Ao inserir Aluno na rota Post , gerou esse require a cima, automaticamente
 
@@ -126,22 +128,80 @@ const curso = await Curso.create({
     duracao_horas
 }) */
 
-routes.get('/cursos', async (req, res) => {
-    const nome = req.query.nome
+/* routes.get('/cursos', async (req, res) => {
+    const nome = req.query.nome;
     const cursos = await Curso.findAll({
         where: {
-            nome:nome
+            nome:nome,
         }
     })
-    res.json(cursos)
-})
+    res.json(cursos) 
+})  
+-- Para pesquisar apenas uma variável Nome*/
+
 // listar todos os cursos - usa apenas o findall
 // const nome query - params - query params no postman 
 // passa chave e valor - chave nome - valor ex html - filtra os valores
 
+routes.get('/cursos', async (req, res) => {
+    const nome = req.query.nome;
+    const duracao_horas = req.query.duracao_horas;
+
+    const todos = {};
+    if (nome) {
+        todos.nome = nome
+    }
+    if (duracao_horas) {
+        todos.duracao_horas = duracao_horas
+    }
+
+    try {
+        const cursos = await Curso.findAll({
+            where: todos
+        });
+    
+    res.json(cursos);
+
+    } catch (error) {
+        console.error('Erro ao buscar cursos:', error);
+        res.status(500).json({ error: 'Erro ao buscar cursos' });
+    }
+});
 
 
-routes.delete('/cursos/:id', (req, res) => {
+
+
+routes.put('/cursos/:id', async (req, res) => {
+    const id = req.params.id;
+    const { nome, duracao_horas} = req.body;
+
+    try {
+    
+        const atualizada = await Curso.findByPk(id)
+        if(!atualizada) {
+            return res.status(404).json({ error: 'Curso não encontrado'})
+        }
+    
+    if (!nome || !duracao_horas) {
+        return res.status(400).json({ error: 'Nome e duração do curso são campos obrigatórios'})
+    }
+
+    await Curso.update({ nome, duracao_horas},
+    {where: { id} });
+
+    const cursoAtualizado = await Curso.findByPk(id);
+    res.status(200).json(cursoAtualizado);
+
+    } catch(error) {
+        console.error('Erro ao atualizar o curso', error);
+        res.status(500).json({ error: 'Erro ao atualizar o curso'})
+    }
+});
+
+ 
+
+
+/* routes.delete('/cursos/:id', (req, res) => {
     const id = req.params.id
     Curso.destroy({
         where: {
@@ -149,9 +209,121 @@ routes.delete('/cursos/:id', (req, res) => {
         }
     })
     res.status(204).json({})
-})
+}) 
+
+Exemplo em aula do professor 
+*/
 
 // não precisa retornar mensagem, apenas status 204
+
+
+
+routes.delete('/cursos/:id', async (req, res) => {
+    const { id }  = req.params;
+
+    const novo = await Curso.findByPk(id);
+
+    if(!novo) {
+        return res.status(404).json({ error: 'Curso não encontrado'})
+    }
+
+    await novo.destroy();
+
+    return res.status(204).json({});
+});
+
+
+
+// NOVO CRUD ---- ROTAS PROFESSORES
+
+/* CRIAR ARQUIVO DE NOVA TABELA
+### Criar uma migration
+1. `sequelize migration:generate --name criar_tabela_alunos`
+2. `npx sequelize-cli migration:generate --name criar_tabela_alunos`
+### Rodar uma migration. Opções:
+1. Opção nº 1: `sequelize db:migrate`
+2. Opção nº 2: `npx sequelize db:migrate`
+
+NA PASTA MODELS
+CRIAR ARQUIVO Professores.js
+*/
+
+
+routes.post('/professores', async (req,res) => {
+    
+    try {    
+        const nome = req.body.nome;
+        const materia = req.body.materia;
+
+        if(!nome) {
+            return res.status(400).json({mensagem: 'O nome é obrigatório'})
+        }
+
+        if(!materia) {
+            return res.status(400).json({mensagem: 'Informar a matéria que o professor leciona é obrigatório'})
+        }
+
+        const professor = await Professor.create({
+            nome: nome,
+            materia: materia
+        })
+        res.status(201).json(professor)
+
+    } catch (error) {
+        console.log(error.message); 
+        res.status(500).json({ error: 'Não foi possível cadastrar o professor' })
+    }
+})
+
+
+routes.get('/professores', async (req, res) => {
+    const professores = await Professor.findAll()
+    res.json(professores)
+})
+
+
+
+routes.put('/professores/:id', async (req, res) => {
+    const id = req.params.id;
+    const { nome, materia} = req.body;
+
+    try {
+    
+        const atualizada = await Professor.findByPk(id)
+        if(!atualizada) {
+            return res.status(404).json({ error: 'Professor não encontrado'})
+        }
+    
+    if (!nome || !materia) {
+        return res.status(400).json({ error: 'Nome e materia são campos obrigatórios'})
+    }
+
+    await Professor.update({ nome, materia},
+    {where: { id} });
+
+    const professorAtualizado = await Professor.findByPk(id);
+    res.status(200).json(professorAtualizado);
+
+    } catch(error) {
+        console.error('Erro ao atualizar o professor', error);
+        res.status(500).json({ error: 'Erro ao atualizar o professor'})
+    }
+});
+
+routes.delete('/professores/:id', async (req, res) => {
+    const { id }  = req.params;
+
+    const novo = await Professor.findByPk(id);
+
+    if(!novo) {
+        return res.status(404).json({ error: 'Professor não encontrado'})
+    }
+
+    await novo.destroy();
+
+    return res.status(204).json({});
+});
+
 
 
 module.exports = routes;
